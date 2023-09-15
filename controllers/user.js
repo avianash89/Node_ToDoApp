@@ -1,66 +1,64 @@
 import { User } from "../models/user.js";
+import bcrypt from "bcrypt";
+import { sendCookie } from "../utils/features.js";
+import ErrorHandler from "../middlewares/error.js";
 
-export const getAllUsers =  async(req, res) => {
-    const users = await User.findBy({});
+export const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
 
-    const keyword = req.query.keyword;
-    console.log(keyword);
+  const user = await User.findOne({ email }).select("+password");
 
-    res.json({
-        success: true,
-        users,
-    });
+  if (!user) return next(new ErrorHandler("Invalid Email or Password", 400));
+
+  const isMatch = await bcrypt.compare(password, user.password);
+
+  if (!isMatch) return next(new ErrorHandler("Invalid Email or Password", 404));
+
+  // If authentication is successful, send a response with a cookie
+  sendCookie(user, res, `Welcome back, ${user.name}`, 200);
+  } catch (error) {
+    next(error);
+  }
 };
 
-export const postAllUsers =  async(req, res) => {
-    const {name,email,password} = req.body;
-    
-    await User.create({
-        name,
-        email,
-        password,
-    });
+export const register = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
 
-    res.status(201).cookie("tempi", "lol").json({
-        success: true,
-        massage: "Register Succesfully",
-    });
+  let user = await User.findOne({ email });
+
+  if (user) return next(new ErrorHandler("User Already Exist", 400));
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  user = await User.create({ name, email, password: hashedPassword });
+
+  // If registration is successful, send a response with a cookie
+  sendCookie(user, res, "Register Successfully", 201);
+  } catch (error) {
+    next(error);
+  }
 };
 
-export const specialFunc =  (req,res) => {
-    res.json({
-        success: true,
-        message: "just joking",
-    });
+export const getMyProfile = (req, res) => {
+  res.status(200).json({
+    success: true,
+    user: req.user,
+  });
 };
 
-export const UserDetails = async(req,res) => {
-    const {id} = req.params;
-    const user = await User.findBy(id);
-
-    res.json({
-        success: true,
-        user,
-    });
+export const logout = (req, res) => {
+  // Clear the cookie and send a response
+  res
+  .status(200)
+  .clearCookie("token", "", {
+    expires: new Date (Date.new()),
+    sameSite: process.env.NODE_ENV === "Development" ? "lax" :"none",
+    secure: process.env.NODE_ENV === "Development" ? false : true,
+  })
+  .json({
+    success: true,
+    user: req.user,
+  });
 };
-
-export const updateUser = async(req,res) => {
-    const {id} = req.params;
-    const user = await User.findBy(id);
-
-    res.json({
-        success: true,
-        message: "Updated",
-    });
-};
-
-export const deleteUser = async(req,res) => {
-    const {id} = req.params;
-    const user = await User.findBy(id);
-
-    res.json({
-        success: true,
-        message: "Deleted",
-    });
-}; 
-
