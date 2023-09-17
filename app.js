@@ -22,6 +22,7 @@ app.use(
         credentials: true,
     })
 );
+// app.use(ErrorHandler());
 
 //Using routes
 app.use("/api/v1/users", userRouter);

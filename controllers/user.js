@@ -3,6 +3,8 @@ import bcrypt from "bcrypt";
 import { sendCookie } from "../utils/features.js";
 import ErrorHandler from "../middlewares/error.js";
 
+// ... other imports ...
+
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -22,20 +24,20 @@ export const login = async (req, res, next) => {
   }
 };
 
-export const register = async (req, res) => {
+export const register = async (req, res, next) => { // Include the 'next' parameter
   try {
     const { name, email, password } = req.body;
 
-  let user = await User.findOne({ email });
+    let user = await User.findOne({ email });
 
-  if (user) return next(new ErrorHandler("User Already Exist", 400));
+    if (user) return next(new ErrorHandler("User Already Exist", 400));
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  user = await User.create({ name, email, password: hashedPassword });
+    user = await User.create({ name, email, password: hashedPassword });
 
-  // If registration is successful, send a response with a cookie
-  sendCookie(user, res, "Register Successfully", 201);
+    // If registration is successful, send a response with a cookie
+    sendCookie(user, res, "Register Successfully", 201);
   } catch (error) {
     next(error);
   }
@@ -48,17 +50,21 @@ export const getMyProfile = (req, res) => {
   });
 };
 
-export const logout = (req, res) => {
-  // Clear the cookie and send a response
-  res
-  .status(200)
-  .clearCookie("token", "", {
-    expires: new Date (Date.new()),
-    sameSite: process.env.NODE_ENV === "Development" ? "lax" :"none",
-    secure: process.env.NODE_ENV === "Development" ? false : true,
-  })
-  .json({
-    success: true,
-    user: req.user,
-  });
+export const logout = (req, res, next) => { // Include the 'next' parameter
+  try {
+    // Clear the cookie and send a response
+    res
+      .status(200)
+      .clearCookie("token", "", {
+        expires: new Date(),
+        sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+        secure: process.env.NODE_ENV === "development" ? false : true,
+      })
+      .json({
+        success: true,
+        user: req.user,
+      });
+  } catch (error) {
+    next(error);
+  }
 };
